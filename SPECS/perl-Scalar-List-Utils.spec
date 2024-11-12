@@ -1,12 +1,16 @@
 Name:           perl-Scalar-List-Utils
 Epoch:          4
 Version:        1.56
-Release:        461%{?dist}
+Release:        462%{?dist}
 Summary:        A selection of general-utility scalar and list subroutines
 License:        GPL+ or Artistic
 URL:            https://metacpan.org/release/Scalar-List-Utils
 Source0:        https://cpan.metacpan.org/authors/id/P/PE/PEVANS/Scalar-List-Utils-%{version}.tar.gz
+# Add braces to fix implied indenting in XS(pairmap)
+# in upstream since 1.57
+Patch0:         Scalar-List-Utils-1.57-Add-braces-to-fix-implied-indenting-in-XS-pairmap-fi.patch
 # Build
+BuildRequires:  coreutils
 BuildRequires:  findutils
 BuildRequires:  gcc
 BuildRequires:  make
@@ -51,8 +55,30 @@ would be nice to have in the perl core, but the usage would not really be
 high enough to warrant the use of a keyword, and the size so small such
 that being individual extensions would be wasteful.
 
+%package tests
+Summary:        Tests for %{name}
+BuildArch:      noarch
+Requires:       %{name} = %{?epoch:%{epoch}:}%{version}-%{release}
+Requires:       perl-Test-Harness
+Requires:       perl(Carp)
+Requires:       perl(IO::File)
+Requires:       perl(IO::Handle)
+Requires:       perl(threads)
+Requires:       perl(threads::shared)
+Requires:       perl(Tie::Handle)
+
+%description tests
+Tests from %{name}. Execute them
+with "%{_libexecdir}/%{name}/test".
+
 %prep
 %setup -q -n Scalar-List-Utils-%{version}
+%patch -P0 -p1
+# Help generators to recognize Perl scripts
+for F in t/*.t; do
+    perl -i -MConfig -ple 'print $Config{startperl} if $. == 1 && !s{\A#!.*perl\b}{$Config{startperl}}' "$F"
+    chmod +x "$F"
+done
 
 %build
 perl Makefile.PL INSTALLDIRS=vendor OPTIMIZE="%{optflags}" NO_PACKLIST=1 NO_PERLLOCAL=1
@@ -62,6 +88,15 @@ perl Makefile.PL INSTALLDIRS=vendor OPTIMIZE="%{optflags}" NO_PACKLIST=1 NO_PERL
 %{make_install}
 find %{buildroot} -type f -name '*.bs' -size 0 -delete
 %{_fixperms} %{buildroot}/*
+
+# Install tests
+mkdir -p %{buildroot}%{_libexecdir}/%{name}
+cp -a t %{buildroot}%{_libexecdir}/%{name}
+cat > %{buildroot}%{_libexecdir}/%{name}/test << 'EOF'
+#!/bin/sh
+cd %{_libexecdir}/%{name} && exec prove -I . -r -j "$(getconf _NPROCESSORS_ONLN)"
+EOF
+chmod +x %{buildroot}%{_libexecdir}/%{name}/test
 
 %check
 make test
@@ -74,7 +109,14 @@ make test
 %{perl_vendorarch}/Sub*
 %{_mandir}/man3/*
 
+%files tests
+%{_libexecdir}/%{name}
+
 %changelog
+* Wed Mar 20 2024 Jitka Plesnikova <jplesnik@redhat.com> - 4:1.56-462
+- Fix implied indenting in XS
+- Resolves: RHEL-28962
+
 * Mon Aug 09 2021 Mohan Boddu <mboddu@redhat.com> - 4:1.56-461
 - Rebuilt for IMA sigs, glibc 2.34, aarch64 flags
   Related: rhbz#1991688

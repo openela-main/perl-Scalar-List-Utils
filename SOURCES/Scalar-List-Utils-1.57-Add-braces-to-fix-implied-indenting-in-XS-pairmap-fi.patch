@@ -1,0 +1,31 @@
+From 0f0539f4781d83609afeb108992b9aa5d9eb0748 Mon Sep 17 00:00:00 2001
+From: "Paul \"LeoNerd\" Evans" <leonerd@leonerd.org.uk>
+Date: Sat, 11 Sep 2021 17:27:52 +0100
+Subject: [PATCH] Add braces to fix implied indenting in XS(pairmap) (fixes
+ GH#58)
+
+---
+ ListUtil.xs | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/ListUtil.xs b/ListUtil.xs
+index 7b9ca45..11e3646 100644
+--- a/ListUtil.xs
++++ b/ListUtil.xs
+@@ -1177,11 +1177,12 @@ PPCODE:
+                     stack[reti++] = newSVsv(PL_stack_base[i + 1]);
+         }
+ 
+-        if (spill)
++        if (spill) {
+             /* the POP_MULTICALL will trigger the SAVEFREESV above;
+              * keep it alive  it on the temps stack instead */
+             SvREFCNT_inc_simple_void_NN(spill);
+             sv_2mortal((SV*)spill);
++        }
+ 
+         POP_MULTICALL;
+ 
+-- 
+2.44.0
+
